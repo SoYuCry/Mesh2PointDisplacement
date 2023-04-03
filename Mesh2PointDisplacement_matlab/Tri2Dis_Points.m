@@ -11,9 +11,9 @@ y = [a(2),b(2),c(2),a(2)]
 % a_new = [0, 1];
 % b_new = [0,0];
 % c_new = [1, 0];
-a_new = [0.9,0];
+a_new = [0.2,0.8];
 b_new = [0,0];
-c_new = [0.2,0.8];
+c_new = [0.9,0];
 x_new = [a_new(1),b_new(1),c_new(1),a_new(1)];
 y_new = [a_new(2),b_new(2),c_new(2),a_new(2)];
 
