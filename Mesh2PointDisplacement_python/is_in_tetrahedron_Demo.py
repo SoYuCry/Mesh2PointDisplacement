@@ -18,7 +18,7 @@ def is_in_tetrahedron(Point, vertices,Vol):
     else:  
         print("点不在四面体内")  
 
-    return Vol==(alpha+beta+gamma+delta)
+    return abs(Vol-(alpha+beta+gamma+delta)<1e-15)
 
 
 def calculateVolum(A,B,C,D):
