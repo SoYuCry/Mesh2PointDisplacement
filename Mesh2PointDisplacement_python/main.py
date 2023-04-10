@@ -1,13 +1,10 @@
-# 整合练习
 import numpy as np
 # 1、Read .STL
 from stl import mesh
 from scipy.spatial import Delaunay
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-
-# 可以计算新坐标的位置，但是还未导入新坐标
-
+from mpl_toolkits import mplot3d
 
 # 计算四面体的体积
 def calculateVolum(A,B,C,D):
@@ -42,10 +39,10 @@ def is_in_tetrahedron(Point, vertices,Vol):
     beta = calculateVolum(vertices[0],vertices[2],vertices[3],Point)
     gamma = calculateVolum(vertices[0],vertices[1],vertices[3],Point)
     delta = calculateVolum(vertices[1],vertices[2],vertices[3],Point)
-    if (abs(Vol-(alpha+beta+gamma+delta))<1e-15):  
-        print("点在四面体内")  
-    else:  
-        print("点不在四面体内")  
+    # if (abs(Vol-(alpha+beta+gamma+delta))<1e-15):  
+    #     print("点在四面体内")  
+    # else:  
+    #     print("点不在四面体内")  
 
     return abs(Vol-(alpha+beta+gamma+delta))<1e-15
 
@@ -101,14 +98,14 @@ def Mesh2DT(mesh):
 
     # 顶点的array数组
 
-    points = np.hstack([x, y, z])
-    DT = Delaunay(points)
-    return DT
+    points_forDT = np.hstack([x, y, z])
+    DT = Delaunay(points_forDT)
+    return DT,points
 
 
 
 def showPlace(point,vertices):
-    # 创建3D图像对象和绘制原始散点分布
+    # 逐个检查每个四面体,可视化的方法看散点是否在里面
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
@@ -122,7 +119,6 @@ def showPlace(point,vertices):
             color='red', s=10, alpha=1, depthshade=False)
 
     # 设置坐标轴范围和标签
-
     ax.set_xlim(min(vertices[0][0],vertices[1][0],vertices[2][0]),max(vertices[0][0],vertices[1][0],vertices[2][0]))
     ax.set_ylim(min(vertices[0][1],vertices[1][1],vertices[2][1]),max(vertices[0][1],vertices[1][1],vertices[2][1]))
     ax.set_zlim(min(vertices[0][2],vertices[1][2],vertices[2][2]),max(vertices[0][2],vertices[1][2],vertices[2][2]))
@@ -131,45 +127,57 @@ def showPlace(point,vertices):
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
 
-
-    # #绘制变形后散点分布
-    # ay = fig.add_subplot(122, projection='3d')
-    # # 创建Poly3DCollection对象，用于绘制四面体
-    # t = Poly3DCollection(vertices_new[faces], alpha=0.25, facecolor='lightskyblue')
-    # ay.add_collection3d(t)
-
-    # # 添加坐标点
-    # ay.scatter([p[0] for p in point], [p[1] for p in point], [p[2] for p in point],
-    #         color='red', s=10, alpha=1, depthshade=False)
-
-    # # 设置坐标轴范围和标签
-    # ay.set_xlim([-0.5, 1.5])
-    # ay.set_ylim([-0.5, 1.5])
-    # ay.set_zlim([-0.5, 1.5])
-    # ay.set_xlabel('X')
-    # ay.set_ylabel('Y')
-    # ay.set_zlabel('Z')
-
     plt.show() # 显示图像
+
+def displacement_list(TXTname):
+
+    # 读取txt文件,导出每行中的第四项
+    displacement_list = []
+    with open(TXTname, 'r') as f:  
+        lines = f.readlines()
+
+    for i in range(8,len(lines)):
+        displacement_list.append(float(lines[i].split()[3]))
+
+    return(displacement_list)
 
 
 
 # 读取变形前后.stl文件
-your_mesh = mesh.Mesh.from_file('NormalMesh.stl')
-your_mesh_new = mesh.Mesh.from_file('NormalMesh.stl')
+your_mesh = mesh.Mesh.from_file('T0.stl')
+# your_mesh_new = mesh.Mesh.from_file('x_surface_0.stl')
+
+x_displacement = displacement_list('T10_x.txt')
+y_displacement = displacement_list('T10_y.txt')
+z_displacement = displacement_list('T10_z.txt')
+
 
 # 散点列表
 points = [[0.01, 0.01, 0.01],[0.02, 0.02, 0.019]]
+# 计算后新的散点位置
 points_new = []
+# 通过加xyz三个方向上的位移,存储得到变形后的Mesh的位置
+points_mesh_new = []
 
-scale = your_mesh.points.flatten()
+# 利用三角剖分得到对.STL文件提取出的顶点,划分好的N个四边形
+DT,points_mesh = Mesh2DT(your_mesh)
+# DT_new = Mesh2DT(your_mesh_new)
 
+# 把每个点坐标点的位移加上，得到变形后的mesh坐标
+for i in range(len(points_mesh)):
+    points_mesh[i][0] +=  x_displacement[i]
+    points_mesh[i][1] +=  y_displacement[i]
+    points_mesh[i][2] +=  z_displacement[i]
+    points_mesh_new.append(points_mesh[i])
 
-DT = Mesh2DT(your_mesh)
-DT_new = Mesh2DT(your_mesh_new)
-
+# 在DT数据结构中,提取得到四边形列表
+points_mesh_new = np.array(points_mesh_new)
 tetra_vertices = DT.points[DT.simplices]
-tetra_vertices_new = DT_new.points[DT.simplices]
+tetra_vertices_new = points_mesh_new[DT.simplices]
+
+# 方便后续调整坐标轴
+scale = your_mesh.points.flatten()
+scale_new = points_mesh_new.flatten()
 
 
 # 遍历网格的四面体
@@ -181,13 +189,68 @@ for i in range(0,len(tetra_vertices)):
     for point in points:
 
         # showPlace(point,tetra_vertices[i])
-
         if (is_in_tetrahedron(point, vertices,Vol)):
             alpha,beta,gamma,delta = relativePlace_index(vertices,point,Vol)
             relativePoin = relativePlace_calculate(alpha,beta,gamma,delta,vertices_new)
             points_new.append(relativePoin)
         else:
             continue
+
+fig = plt.figure()
+
+ax = fig.add_subplot(121, projection='3d')
+faces = np.array([[0, 2, 1], [0, 1, 3], [0, 3, 2], [1, 2, 3]])
+ax.add_collection3d(mplot3d.art3d.Poly3DCollection(tetra_vertices, color='lightgrey'))
+
+# 添加坐标点
+ax.scatter([p[0] for p in points], [p[1] for p in points], [p[2] for p in points],
+           color='red', s=100, alpha=1, depthshade=False)
+
+# 设置坐标轴范围和标签,这里其实想写一个自动画范围的东西
+# ax.set_xlim([-0.2, 1.2])
+# ax.set_ylim([-0.2, 1.2])
+# ax.set_zlim([-0.1, 0.3])
+ax.auto_scale_xyz(scale, scale, scale)
+
+ax.set_xlabel('X')
+ax.set_ylabel('Y')
+ax.set_zlabel('Z')
+
+
+#绘制变形后散点分布
+ay = fig.add_subplot(122, projection='3d')
+# 可视化一些系列四面体
+ay.add_collection3d(mplot3d.art3d.Poly3DCollection(tetra_vertices_new, color='lightgrey'))
+
+# 添加坐标点
+ay.scatter([p[0] for p in points_new], [p[1] for p in points_new], [p[2] for p in points_new],
+           color='red', s=10, alpha=1, depthshade=False)
+
+# 设置坐标轴范围和标签
+# ay.set_xlim([-4, 4])
+# ay.set_ylim([-4, 4])
+# ay.set_zlim([-1, 4])
+ay.auto_scale_xyz(scale_new, scale_new, scale_new)
+
+ay.set_xlabel('X')
+ay.set_ylabel('Y')
+ay.set_zlabel('Z')
+
+plt.show() # 显示图像
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 pass
 # # 2、Your_mesh中的vector作为四面体
